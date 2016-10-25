@@ -7,8 +7,8 @@ https://github.com/firebase/polymerfire/blob/master/LICENSE
 -->
 
 <link rel="import" href="../polymer/polymer.html">
-<link rel="import" href="firebase.html">
 <link rel="import" href="firebase-common-behavior.html">
+<link rel="import" href="firebase-messaging-script.html">
 
 <!--
 `firebase-messaging` is a wrapper around the Firebase Cloud Messaging API. It
@@ -41,6 +41,27 @@ you can actually send push messsages:
 <firebase-messaging token="{{token}}"></firebase-messaging>
 <firebase-document path="/users/[[user.uid]]/token" value="[[token]]"></firebase-document>
 ```
+
+You'll also need a [Web App Manifest](https://developer.mozilla.org/en-US/docs/Web/Manifest)
+for your site. It must contain the following:
+
+```json
+{
+  "gcm_sender_id": "103953800507"
+}
+```
+
+**Note:** You must use the **exact line specified above**. Do *not* change the sender
+id to your project's individual sender id.
+
+Finally, Firebase Cloud Messaging requires a service worker to handle push messages.
+The easiest way is using a service worker called `firebase-messaging-sw.js` in your
+app's root directory. See [the FCM docs](https://firebase.google.com/docs/cloud-messaging/js/receive#handle_messages_when_your_web_app_is_in_the_foreground)
+for more information.
+
+To use a different service worker than the default, you will need to add the
+`custom-sw` attribute to your `<firebase-messaging>` element, and then explicitly
+call `.activate()` on the element once you've
 -->
 <dom-module id="firebase-messaging">
   <script>
@@ -189,13 +210,18 @@ you can actually send push messsages:
          * When the `custom-sw` is added to `firebase-messaging`, this method
          * must be called after initialization to start listening for push
          * messages.
+         *
+         * @param {ServiceWorkerRegistration} swreg the custom service worker registration with which to activate
          */
-        activate: function() {
+        activate: function(swreg) {
           this.statusKnown = false;
           this.active = false;
           this.token = null;
           if (this.app) {
             this.messaging = this.app.messaging();
+            if (swreg) {
+              this.messaging.useServiceWorker(swreg);
+            }
             activateMessaging(this, this.app);
           } else {
             this.messaging = null;
